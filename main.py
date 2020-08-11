@@ -65,80 +65,87 @@ def getLecInfo(lecCode):
     return res
 
 
+def initializer():
+    """Ignore SIGINT in child workers."""
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+
 if __name__ == "__main__":
-    ### Configure multiprocess pool, chromedriver
-    freeze_support()
-    pool = Pool(processes=CONFIG["pool_size"])
-    browser = webdriver.Chrome(CHROMEDRIVER_PATH)
+    try:
+        ### Configure multiprocess pool, chromedriver
+        freeze_support()
+        pool = Pool(processes=CONFIG["pool_size"], initializer=initializer)
+        browser = webdriver.Chrome(CHROMEDRIVER_PATH)
 
-    ### Login to sugang
-    loginSugang(browser, **CONFIG["login"])
+        ### Login to sugang
+        loginSugang(browser, **CONFIG["login"])
 
-    ### Main loop
-    while True:
-        ## Check remaining session time
-        session_renew = CONFIG["session_renew"]  # remaining sec threshold
-        try:
-            e = browser.find_element_by_id("timeStatus")
-            remain_sec = int(e.text.split("초")[0])
-        except:
-            remain_sec = 1200  # Initially it does not exist
-            pass
-        if remain_sec < session_renew:
-            # Renew
-            e = browser.find_element_by_class_name("stop")
-            e.click()
-            loginSugang(browser, **CONFIG["login"])
-            print("INFO", "Login renewed")
-        print("VERBOSE", f"Remain {remain_sec}sec")
-        
-        ## Main logic
-        regTable = browser.find_element_by_css_selector("#onlineLectReqGrid > div.data > table > tbody")
-        packTable = browser.find_element_by_css_selector("#lectPackReqGrid > div.data > table > tbody")
-        
-        r = pool.map(getLecInfo, CONFIG["lectures"])
-        # print(r)
-        for lecInfo in r:
-            print("VERBOSE", f"{lecInfo['subj_class_cde']}: r{lecInfo['lect_req_cnt']}, q{lecInfo['lect_quota']}")
+        ### Main loop
+        while True:
+            ## Check remaining session time
+            session_renew = CONFIG["session_renew"]  # remaining sec threshold
+            try:
+                e = browser.find_element_by_id("timeStatus")
+                remain_sec = int(e.text.split("초")[0])
+            except:
+                remain_sec = 1200  # Initially it does not exist
+                pass
+            
+            if remain_sec < session_renew:
+                # Renew
+                e = browser.find_element_by_class_name("stop")
+                e.click()
+                loginSugang(browser, **CONFIG["login"])
+                print("INFO", "Login renewed")
+            print("VERBOSE", f"Remain {remain_sec}sec")
+            
+            ## Main logic
+            regTable = browser.find_element_by_css_selector("#onlineLectReqGrid > div.data > table > tbody")
+            packTable = browser.find_element_by_css_selector("#lectPackReqGrid > div.data > table > tbody")
+            
+            r = pool.map(getLecInfo, CONFIG["lectures"])
+            # print(r)
+            for lecInfo in r:
+                print("VERBOSE", f"{lecInfo['subj_class_cde']}: r{lecInfo['lect_req_cnt']}, q{lecInfo['lect_quota']}")
 
-            # If available (req_cnt < quota), find lecture in packTable
-            if lecInfo["lect_req_cnt"] < lecInfo["lect_quota"]:
-                # Check if it's already registered
-                already = False
-                for tr in regTable.find_elements_by_tag_name("tr"):
-                    td = tr.find_elements_by_tag_name("td")
-                    if td and td[1].text == lecInfo["subj_class_cde"]:
-                        print("ERROR", f"{lecInfo['subj_class_cde']}: Already registered")
-                        already = True
-                        break
-                if already:
+                # If available (req_cnt < quota), find lecture in packTable
+                if lecInfo["lect_req_cnt"] < lecInfo["lect_quota"]:
+                    # Check if it's already registered
+                    already = False
+                    for tr in regTable.find_elements_by_tag_name("tr"):
+                        td = tr.find_elements_by_tag_name("td")
+                        if td and td[1].text == lecInfo["subj_class_cde"]:
+                            print("ERROR", f"{lecInfo['subj_class_cde']}: Already registered")
+                            already = True
+                            break
+                    if already:
+                        continue
+
+                    succeed = False
+                    for tr in packTable.find_elements_by_tag_name("tr"):
+                        td = tr.find_elements_by_tag_name("td")
+                        if td and td[0].text == lecInfo["subj_class_cde"]:
+                            try:
+                                td[10].click()
+                                WebDriverWait(browser, 0).until(expected_conditions.alert_is_present())
+                                alert = browser.switch_to.alert
+                                print("INFO", f"{lecInfo['subj_class_cde']}: {alert.text}")
+                                alert.accept()
+                                succeed = True
+                            except TimeoutException:
+                                print("INFO", "no alert")
+                    if not succeed:
+                        print("ERROR", "Not found in packTable")
+                else:
                     continue
 
-                succeed = False
-                for tr in packTable.find_elements_by_tag_name("tr"):
-                    td = tr.find_elements_by_tag_name("td")
-                    if td and td[0].text == lecInfo["subj_class_cde"]:
-                        try:
-                            td[10].click()
-                            WebDriverWait(browser, 0).until(expected_conditions.alert_is_present())
-                            alert = browser.switch_to.alert
-                            print("INFO", f"{lecInfo['subj_class_cde']}: {alert.text}")
-                            alert.accept()
-                            succeed = True
-                        except TimeoutException:
-                            print("INFO", "no alert")
-                if not succeed:
-                    print("ERROR", "Not found in packTable")
-            else:
-                continue
-            
-
-
-
-        # pool.close()
-        # pool.join()
-        # browser.close()
-        # exit()
+    except KeyboardInterrupt:
+        print("CTRL+C")
+    finally:
+        pool.terminate()
+        pool.join()
+        browser.close()
+        exit()
 
 
     
