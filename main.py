@@ -4,6 +4,7 @@ from selenium.webdriver.support import expected_conditions
 from selenium.common.exceptions import TimeoutException
 from bs4 import BeautifulSoup
 import requests
+from requests.adapters import HTTPAdapter
 from multiprocessing import Pool, freeze_support
 import os
 import signal
@@ -47,12 +48,14 @@ def loginSugang(browser, snum, id, passwd):
 
 
 def getLecInfo(lecCode):
-    response = requests.post(LECINFO_URL, data={
-        "lectReqCntEnq.search_open_yr_trm": CONFIG["year_term"],  # FIXME
+    session = requests.Session()
+    session.mount("http://", HTTPAdapter(max_retries=1000))
+    response = session.post(LECINFO_URL, data={
+        "lectReqCntEnq.search_open_yr_trm": CONFIG["year_term"],
         "lectReqCntEnq.search_subj_cde": lecCode[0:7],
         "lectReqCntEnq.search_sub_class_cde": lecCode[7:],
         "searchValue": lecCode
-    }, timeout=1000000)
+    })
     soup = BeautifulSoup(response.text, "html.parser")  # TODO: lxml?
     res = {
         "subj_class_cde": soup.find("td", class_="subj_class_cde").text,
@@ -66,7 +69,7 @@ def getLecInfo(lecCode):
 
 
 def initializer():
-    """Ignore SIGINT in child workers."""
+    # Ignore SIGINT in child workers
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
@@ -105,6 +108,20 @@ if __name__ == "__main__":
             
             r = pool.map(getLecInfo, CONFIG["lectures"])
             # print(r)
+
+
+            """
+            r.append({
+                "subj_class_cde": "",
+                "subj_nm": "Asdf",
+                "unit": 3,
+                "prof_nm": "sdf",
+                "lect_quota": 80,
+                "lect_req_cnt": 30,
+            })
+            """
+
+
             for lecInfo in r:
                 print("VERBOSE", f"{lecInfo['subj_class_cde']}: r{lecInfo['lect_req_cnt']}, q{lecInfo['lect_quota']}")
 
@@ -138,14 +155,15 @@ if __name__ == "__main__":
                         print("ERROR", "Not found in packTable")
                 else:
                     continue
+            time.sleep(1)
 
     except KeyboardInterrupt:
         print("CTRL+C")
+    except Exception as e:
+        print(e)
     finally:
+        print("Terminating")
         pool.terminate()
         pool.join()
         browser.close()
         exit()
-
-
-    
