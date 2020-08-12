@@ -22,7 +22,6 @@ LECINFO_URL = "http://my.knu.ac.kr/stpo/stpo/cour/lectReqCntEnq/list.action"
 # DEBUG INFO WARNING ERROR CRITICAL
 
 def loginSugang(browser, snum, id, passwd):
-    print(snum, id, passwd)
     ## Login
     browser.get(SUGANG_URL)
     e = browser.find_element_by_id("user.stu_nbr")
@@ -39,7 +38,6 @@ def loginSugang(browser, snum, id, passwd):
         WebDriverWait(browser, 0).until(expected_conditions.alert_is_present())
         alert = browser.switch_to.alert
         alert.accept()
-        time.sleep(1)
         print("ERROR", "Login Failure:", alert.text)
         browser.close()
         exit()
@@ -109,6 +107,7 @@ if __name__ == "__main__":
             r = pool.map(getLecInfo, CONFIG["lectures"])
             # print(r)
 
+            
 
             """
             r.append({
