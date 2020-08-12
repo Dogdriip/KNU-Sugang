@@ -38,11 +38,11 @@ def loginSugang(browser, snum, id, passwd):
         WebDriverWait(browser, 0).until(expected_conditions.alert_is_present())
         alert = browser.switch_to.alert
         alert.accept()
-        print("ERROR", "Login Failure:", alert.text)
+        print("ERROR", "Login failure:", alert.text)
         browser.close()
         exit()
     except TimeoutException:
-        print("INFO", "Login Succeed")
+        print("INFO", "Login succeed")
 
 
 def getLecInfo(lecCode):
@@ -54,7 +54,8 @@ def getLecInfo(lecCode):
         "lectReqCntEnq.search_sub_class_cde": lecCode[7:],
         "searchValue": lecCode
     })
-    soup = BeautifulSoup(response.text, "html.parser")  # TODO: lxml?
+    # soup = BeautifulSoup(response.text, "html.parser")
+    soup = BeautifulSoup(response.text, "lxml")
     res = {
         "subj_class_cde": soup.find("td", class_="subj_class_cde").text,
         "subj_nm": soup.find("td", class_="subj_nm").text,
@@ -107,7 +108,7 @@ if __name__ == "__main__":
             r = pool.map(getLecInfo, CONFIG["lectures"])
             # print(r)
 
-            
+
 
             """
             r.append({
@@ -131,7 +132,7 @@ if __name__ == "__main__":
                     for tr in regTable.find_elements_by_tag_name("tr"):
                         td = tr.find_elements_by_tag_name("td")
                         if td and td[1].text == lecInfo["subj_class_cde"]:
-                            print("ERROR", f"{lecInfo['subj_class_cde']}: Already registered")
+                            print("WARNING", f"{lecInfo['subj_class_cde']}: Already registered")
                             already = True
                             break
                     if already:
@@ -154,7 +155,7 @@ if __name__ == "__main__":
                         print("ERROR", "Not found in packTable")
                 else:
                     continue
-            time.sleep(1)
+            time.sleep(CONFIG["delay_sec"])
 
     except KeyboardInterrupt:
         print("CTRL+C")
