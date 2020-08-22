@@ -12,18 +12,21 @@ import time
 import json
 
 
-CONFIG_PATH = "./config.json"
-CONFIG = json.load(open(CONFIG_PATH, "r"))
-CHROMEDRIVER_PATH = "./chromedriver"
-SUGANG_URL = "http://sugang.knu.ac.kr/Sugang/comm/support/login/loginForm.action?redirUrl=%2FSugang%2Fcour%2FlectReq%2FonlineLectReq%2Flist.action"
-LECINFO_URL = "http://my.knu.ac.kr/stpo/stpo/cour/lectReqCntEnq/list.action"
-
-
 # DEBUG INFO WARNING ERROR CRITICAL
+
+
+### Load config
+try:
+    CONFIG = json.load(open("./config.json", "r"))
+except:
+    print("ERROR", "Cannot open 'config.json'")
+    exit()
+print("VERBOSE", "Config loaded")
+
 
 def loginSugang(browser, snum, id, passwd):
     ## Login
-    browser.get(SUGANG_URL)
+    browser.get(CONFIG["general"]["sugang_url"])
     e = browser.find_element_by_id("user.stu_nbr")
     e.send_keys(snum)
     e = browser.find_element_by_id("user.usr_id")
@@ -37,18 +40,18 @@ def loginSugang(browser, snum, id, passwd):
     try:
         WebDriverWait(browser, 0).until(expected_conditions.alert_is_present())
         alert = browser.switch_to.alert
-        alert.accept()
         print("ERROR", "Login failure:", alert.text)
-        browser.close()
-        exit()
+        alert.accept()
+        return False
     except TimeoutException:
         print("INFO", "Login succeed")
+        return True
 
 
 def getLecInfo(lecCode):
     session = requests.Session()
     session.mount("http://", HTTPAdapter(max_retries=1000))
-    response = session.post(LECINFO_URL, data={
+    response = session.post(CONFIG["general"]["lecinfo_url"], data={
         "lectReqCntEnq.search_open_yr_trm": CONFIG["year_term"],
         "lectReqCntEnq.search_subj_cde": lecCode[0:7],
         "lectReqCntEnq.search_sub_class_cde": lecCode[7:],
@@ -76,16 +79,17 @@ if __name__ == "__main__":
     try:
         ### Configure multiprocess pool, chromedriver
         freeze_support()
-        pool = Pool(processes=CONFIG["pool_size"], initializer=initializer)
-        browser = webdriver.Chrome(CHROMEDRIVER_PATH)
+        pool = Pool(processes=CONFIG["general"]["pool_size"], initializer=initializer)
+        browser = webdriver.Chrome(CONFIG["general"]["chromedriver_path"])
 
         ### Login to sugang
-        loginSugang(browser, **CONFIG["login"])
+        if not loginSugang(browser, **CONFIG["login"]):
+            raise Exception("LoginFailureException")
 
         ### Main loop
         while True:
             ## Check remaining session time
-            session_renew = CONFIG["session_renew"]  # remaining sec threshold
+            session_renew = CONFIG["general"]["session_renew"]  # remaining sec threshold
             try:
                 e = browser.find_element_by_id("timeStatus")
                 remain_sec = int(e.text.split("초")[0])
@@ -95,17 +99,19 @@ if __name__ == "__main__":
             
             if remain_sec < session_renew:
                 # Renew
+                print("INFO", "Login renewing...")
                 e = browser.find_element_by_class_name("stop")
                 e.click()
-                loginSugang(browser, **CONFIG["login"])
-                print("INFO", "Login renewed")
+                if not loginSugang(browser, **CONFIG["login"]):
+                    raise Exception("LoginFailureException")
+                
             print("VERBOSE", f"Remain {remain_sec}sec")
             
             ## Main logic
             regTable = browser.find_element_by_css_selector("#onlineLectReqGrid > div.data > table > tbody")
             packTable = browser.find_element_by_css_selector("#lectPackReqGrid > div.data > table > tbody")
             
-            r = pool.map(getLecInfo, CONFIG["lectures"])
+            r = pool.map(getLecInfo, CONFIG["request"]["lectures"])
             # print(r)
 
 
@@ -155,12 +161,12 @@ if __name__ == "__main__":
                         print("ERROR", "Not found in packTable")
                 else:
                     continue
-            time.sleep(CONFIG["delay_sec"])
+            time.sleep(CONFIG["general"]["delay_sec"])
 
     except KeyboardInterrupt:
-        print("CTRL+C")
+        print("KeyboardInterrupt")
     except Exception as e:
-        print(e)
+        print(" ".join(e.args))
     finally:
         print("Terminating")
         pool.terminate()
