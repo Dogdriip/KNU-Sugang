@@ -74,15 +74,14 @@ def initializer():
 
 if __name__ == "__main__":
     global CONFIG
+    pool = None
+    browser = None
+
     try:
         ### Load config
         CONFIG = json.load(open("./config.json", "r"))
         print("VERBOSE", "Config loaded")
-    except:
-        print("ERROR", "Cannot open 'config.json'")
-        sleep_exit(3)
 
-    try:
         ### Configure multiprocess pool, chromedriver
         freeze_support()
         pool = Pool(processes=CONFIG["general"]["pool_size"], initializer=initializer)
@@ -173,11 +172,12 @@ if __name__ == "__main__":
         print("KeyboardInterrupt")
     except Exception as e:
         print(e)
-        print(" ".join(e.args))
     finally:
         print("Terminating")
-        pool.terminate()
-        pool.join()
-        browser.close()
+        if pool:
+            pool.terminate()
+            pool.join()
+        if browser:
+            browser.close()
 
         sleep_exit(3)
