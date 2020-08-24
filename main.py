@@ -15,13 +15,10 @@ import json
 # DEBUG INFO WARNING ERROR CRITICAL
 
 
-### Load config
-try:
-    CONFIG = json.load(open("./config.json", "r"))
-except:
-    print("ERROR", "Cannot open 'config.json'")
+def sleep_exit(sec):
+    print(f"Closing in {sec} seconds...")
+    time.sleep(sec)
     exit()
-print("VERBOSE", "Config loaded")
 
 
 def loginSugang(browser, snum, id, passwd):
@@ -73,6 +70,15 @@ def getLecInfo(lecCode):
 def initializer():
     # Ignore SIGINT in child workers
     signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+
+### Load config
+try:
+    CONFIG = json.load(open("./config.json", "r"))
+except:
+    print("ERROR", "Cannot open 'config.json'")
+    sleep_exit(3)
+print("VERBOSE", "Config loaded")
 
 
 if __name__ == "__main__":
@@ -172,4 +178,5 @@ if __name__ == "__main__":
         pool.terminate()
         pool.join()
         browser.close()
-        exit()
+
+        sleep_exit(3)
