@@ -72,16 +72,16 @@ def initializer():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
-### Load config
-try:
-    CONFIG = json.load(open("./config.json", "r"))
-except:
-    print("ERROR", "Cannot open 'config.json'")
-    sleep_exit(3)
-print("VERBOSE", "Config loaded")
-
-
 if __name__ == "__main__":
+    global CONFIG
+    try:
+        ### Load config
+        CONFIG = json.load(open("./config.json", "r"))
+        print("VERBOSE", "Config loaded")
+    except:
+        print("ERROR", "Cannot open 'config.json'")
+        sleep_exit(3)
+
     try:
         ### Configure multiprocess pool, chromedriver
         freeze_support()
@@ -172,6 +172,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("KeyboardInterrupt")
     except Exception as e:
+        print(e)
         print(" ".join(e.args))
     finally:
         print("Terminating")
