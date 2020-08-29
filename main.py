@@ -10,6 +10,7 @@ import os
 import signal
 import time
 import json
+import argparse
 
 
 # DEBUG INFO WARNING ERROR CRITICAL
@@ -76,6 +77,10 @@ if __name__ == "__main__":
     global CONFIG
     pool = None
     browser = None
+
+    ### Check arguments
+    # TODO: argparse
+    
 
     try:
         ### Load config
