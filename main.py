@@ -78,8 +78,15 @@ if __name__ == "__main__":
     pool = None
     browser = None
 
-    ### Check arguments
-    # TODO: argparse
+    ### Parse arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--generate_config", default=None, metavar="DEST_DIR")
+    
+    args = parser.parse_args()
+    if args.generate_config:
+        ## Generate config and exit
+        print("Generate config here")
+        print(args.generate_config)
     
 
     try:
