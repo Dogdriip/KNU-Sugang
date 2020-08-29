@@ -11,6 +11,7 @@ import signal
 import time
 import json
 import argparse
+from generate_config import *
 
 
 # DEBUG INFO WARNING ERROR CRITICAL
@@ -81,13 +82,11 @@ if __name__ == "__main__":
     ### Parse arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--generate_config", default=None, metavar="DEST_DIR")
-    
     args = parser.parse_args()
     if args.generate_config:
         ## Generate config and exit
-        print("Generate config here")
-        print(args.generate_config)
-    
+        generate_config(args.generate_config, "config.json")
+        exit()
 
     try:
         ### Load config
