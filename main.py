@@ -12,6 +12,7 @@ import time
 import json
 import argparse
 from generate_config import *
+import traceback
 
 
 # DEBUG INFO WARNING ERROR CRITICAL
@@ -50,8 +51,9 @@ def loginSugang(browser, snum, id, passwd):
 def getLecInfo(lecCode):
     session = requests.Session()
     session.mount("http://", HTTPAdapter(max_retries=1000))
-    response = session.post(CONFIG["general"]["lecinfo_url"], data={
-        "lectReqCntEnq.search_open_yr_trm": CONFIG["year_term"],
+    # response = session.post(CONFIG["general"]["lecinfo_url"], data={
+    response = session.post("http://my.knu.ac.kr/stpo/stpo/cour/lectReqCntEnq/list.action", data={
+        "lectReqCntEnq.search_open_yr_trm": "20201",
         "lectReqCntEnq.search_subj_cde": lecCode[0:7],
         "lectReqCntEnq.search_sub_class_cde": lecCode[7:],
         "searchValue": lecCode
@@ -183,6 +185,7 @@ if __name__ == "__main__":
         print("KeyboardInterrupt")
     except Exception as e:
         print(e)
+        traceback.print_exc()
     finally:
         print("Terminating")
         if pool:
